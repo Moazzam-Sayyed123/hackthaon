@@ -19,11 +19,9 @@ public class SellerServiceApplication {
     @Bean
     CommandLineRunner seed(ProductRepository repo) {
         return args -> {
-            if (!repo.existsBySku("SKU-101")) {
-                repo.save(new Product("SKU-101", "Wireless Mouse", new BigDecimal("799.00")));
-            }
-            if (!repo.existsBySku("SKU-102")) {
-                repo.save(new Product("SKU-102", "Mechanical Keyboard", new BigDecimal("2999.00")));
+            if (repo.findAll().isEmpty()) {
+                repo.save(new Product("Wireless Mouse", new BigDecimal("799.00")));
+                repo.save(new Product("Mechanical Keyboard", new BigDecimal("2999.00")));
             }
         };
     }

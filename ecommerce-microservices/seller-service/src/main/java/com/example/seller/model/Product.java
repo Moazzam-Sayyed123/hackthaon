@@ -10,24 +10,24 @@ public class Product {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 64)
-    private String sku;
-
     @Column(nullable = false)
     private String title;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Column(nullable = false)
+    private Integer quantity = 0;
+
     public Product() {}
-    public Product(String sku, String title, BigDecimal price) {
-        this.sku = sku; this.title = title; this.price = price;
+    public Product(String title, BigDecimal price) {
+        this.title = title; this.price = price;
     }
     public Long getId() { return id; }
-    public String getSku() { return sku; }
-    public void setSku(String sku) { this.sku = sku; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }

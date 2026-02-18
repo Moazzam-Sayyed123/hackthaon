@@ -3,20 +3,35 @@ package com.example.buyer.controller;
 
 import com.example.buyer.dto.CreateRuleRequest;
 import com.example.buyer.dto.TriggerResponse;
+import com.example.buyer.dto.WalletResponse;
+import com.example.buyer.dto.PriceHistoryResponse;
 import com.example.buyer.model.AutoOrderRule;
+import com.example.buyer.model.UserWallet;
+import com.example.buyer.model.PriceHistory;
 import com.example.buyer.repo.RuleRepository;
+import com.example.buyer.repo.UserWalletRepository;
+import com.example.buyer.repo.PriceHistoryRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.*;
 
 @RestController
 @RequestMapping("/api")
 public class AutoOrderController {
     private final RuleRepository repo;
-    public AutoOrderController(RuleRepository repo) { this.repo = repo; }
+    private final UserWalletRepository walletRepo;
+    private final PriceHistoryRepository priceHistoryRepo;
+    
+    public AutoOrderController(RuleRepository repo, UserWalletRepository walletRepo, PriceHistoryRepository priceHistoryRepo) { 
+        this.repo = repo;
+        this.walletRepo = walletRepo;
+        this.priceHistoryRepo = priceHistoryRepo;
+    }
 
     @GetMapping("/health")
     public Map<String, Object> health() {
@@ -24,7 +39,9 @@ public class AutoOrderController {
     }
 
     @GetMapping("/auto-orders")
-    public List<AutoOrderRule> list() { return repo.findAll(); }
+    public List<AutoOrderRule> list() { 
+        return repo.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+    }
 
     @PostMapping("/auto-orders")
     public ResponseEntity<AutoOrderRule> create(@RequestBody CreateRuleRequest req) {
@@ -33,18 +50,20 @@ public class AutoOrderController {
         }
         AutoOrderRule r = new AutoOrderRule();
         r.setProductId(req.productId);
+        r.setProductTitle(req.productTitle != null ? req.productTitle : "");
         r.setPriceMin(req.priceMin);
         r.setPriceMax(req.priceMax);
         r.setQty(req.qty == null ? 1 : req.qty);
         r.setCap(req.cap);
+        r.setStatus("active");
         return ResponseEntity.status(201).body(repo.save(r));
     }
 
     @PostMapping("/auto-orders/{id}/trigger")
-    public ResponseEntity<TriggerResponse> trigger(@PathVariable Long id) {
-        var ruleOpt = repo.findById(id);
+    public ResponseEntity<TriggerResponse> trigger(@PathVariable("id") Long id) {
+        Optional<AutoOrderRule> ruleOpt = repo.findById(id);
         if (ruleOpt.isEmpty() || !ruleOpt.get().isActive()) return ResponseEntity.status(404).build();
-        var rule = ruleOpt.get();
+        AutoOrderRule rule = ruleOpt.get();
 
         BigDecimal min = rule.getPriceMin();
         BigDecimal max = rule.getPriceMax();
@@ -69,4 +88,68 @@ public class AutoOrderController {
         resp.total = total;
         return ResponseEntity.ok(resp);
     }
+
+    @DeleteMapping("/auto-orders/{id}")
+    public ResponseEntity<Void> deleteRule(@PathVariable("id") Long id) {
+        if (!repo.existsById(id)) {
+            return ResponseEntity.status(404).build();
+        }
+        repo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Wallet endpoints
+    @GetMapping("/wallet/{userId}")
+    public ResponseEntity<WalletResponse> getWallet(@PathVariable("userId") String userId) {
+        Optional<UserWallet> walletOpt = walletRepo.findByUserId(userId);
+        if (walletOpt.isEmpty()) {
+            // Create default wallet if not exists
+            UserWallet newWallet = new UserWallet(userId, userId);
+            UserWallet saved = walletRepo.save(newWallet);
+            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getBalance()));
+        }
+        UserWallet wallet = walletOpt.get();
+        return ResponseEntity.ok(new WalletResponse(wallet.getId(), wallet.getUserId(), wallet.getUserEmail(), wallet.getBalance()));
+    }
+
+    @PostMapping("/wallet/{userId}/add")
+    public ResponseEntity<WalletResponse> addWalletBalance(@PathVariable("userId") String userId, @RequestBody Map<String, Object> body) {
+        try {
+            Number amtNum = (Number) body.get("amount");
+            if (amtNum == null) return ResponseEntity.badRequest().build();
+            java.math.BigDecimal amt = new java.math.BigDecimal(amtNum.toString());
+            Optional<UserWallet> walletOpt = walletRepo.findByUserId(userId);
+            UserWallet wallet;
+            if (walletOpt.isEmpty()) {
+                wallet = new UserWallet(userId, userId);
+                wallet.setBalance(amt);
+            } else {
+                wallet = walletOpt.get();
+                wallet.setBalance(wallet.getBalance().add(amt));
+                wallet.setUpdatedAt(Instant.now());
+            }
+            UserWallet saved = walletRepo.save(wallet);
+            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getBalance()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    // Price History endpoints
+    @GetMapping("/price-history/product/{productId}")
+    public ResponseEntity<List<PriceHistoryResponse>> getPriceHistory(@PathVariable("productId") Long productId) {
+        List<PriceHistory> history = priceHistoryRepo.findByProductId(productId, Sort.by(Sort.Direction.DESC, "recordedAt"));
+        List<PriceHistoryResponse> response = new ArrayList<>();
+        for (PriceHistory ph : history) {
+            response.add(new PriceHistoryResponse(ph.getId(), ph.getProductId(), ph.getProductTitle(), ph.getPrice(), ph.getRecordedAt()));
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/price-history")
+    public ResponseEntity<PriceHistoryResponse> recordPrice(@RequestBody PriceHistory priceHistory) {
+        PriceHistory saved = priceHistoryRepo.save(priceHistory);
+        return ResponseEntity.status(201).body(new PriceHistoryResponse(saved.getId(), saved.getProductId(), saved.getProductTitle(), saved.getPrice(), saved.getRecordedAt()));
+    }
 }
+
