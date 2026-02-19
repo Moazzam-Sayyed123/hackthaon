@@ -5,6 +5,7 @@ import com.example.buyer.dto.CreateRuleRequest;
 import com.example.buyer.dto.TriggerResponse;
 import com.example.buyer.dto.WalletResponse;
 import com.example.buyer.dto.PriceHistoryResponse;
+import com.example.buyer.dto.PriceListResponse;
 import com.example.buyer.model.AutoOrderRule;
 import com.example.buyer.model.UserWallet;
 import com.example.buyer.model.PriceHistory;
@@ -106,30 +107,32 @@ public class AutoOrderController {
             // Create default wallet if not exists
             UserWallet newWallet = new UserWallet(userId, userId);
             UserWallet saved = walletRepo.save(newWallet);
-            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getBalance()));
+            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getWalletBalance()));
         }
         UserWallet wallet = walletOpt.get();
-        return ResponseEntity.ok(new WalletResponse(wallet.getId(), wallet.getUserId(), wallet.getUserEmail(), wallet.getBalance()));
+        return ResponseEntity.ok(new WalletResponse(wallet.getId(), wallet.getUserId(), wallet.getUserEmail(), wallet.getWalletBalance()));
     }
 
     @PostMapping("/wallet/{userId}/add")
     public ResponseEntity<WalletResponse> addWalletBalance(@PathVariable("userId") String userId, @RequestBody Map<String, Object> body) {
         try {
             Number amtNum = (Number) body.get("amount");
+            // payment mode is accepted but not required for now
+            Object mode = body.get("mode");
             if (amtNum == null) return ResponseEntity.badRequest().build();
             java.math.BigDecimal amt = new java.math.BigDecimal(amtNum.toString());
             Optional<UserWallet> walletOpt = walletRepo.findByUserId(userId);
             UserWallet wallet;
             if (walletOpt.isEmpty()) {
                 wallet = new UserWallet(userId, userId);
-                wallet.setBalance(amt);
+                wallet.setWalletBalance(amt);
             } else {
                 wallet = walletOpt.get();
-                wallet.setBalance(wallet.getBalance().add(amt));
+                wallet.setWalletBalance(wallet.getWalletBalance().add(amt));
                 wallet.setUpdatedAt(Instant.now());
             }
             UserWallet saved = walletRepo.save(wallet);
-            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getBalance()));
+            return ResponseEntity.ok(new WalletResponse(saved.getId(), saved.getUserId(), saved.getUserEmail(), saved.getWalletBalance()));
         } catch (Exception ex) {
             return ResponseEntity.status(500).build();
         }
@@ -138,10 +141,10 @@ public class AutoOrderController {
     // Price History endpoints
     @GetMapping("/price-history/product/{productId}")
     public ResponseEntity<List<PriceHistoryResponse>> getPriceHistory(@PathVariable("productId") Long productId) {
-        List<PriceHistory> history = priceHistoryRepo.findByProductId(productId, Sort.by(Sort.Direction.DESC, "recordedAt"));
+        List<PriceHistory> history = priceHistoryRepo.findByProductId(productId, Sort.by(Sort.Direction.DESC, "lastUpdateDateTime"));
         List<PriceHistoryResponse> response = new ArrayList<>();
         for (PriceHistory ph : history) {
-            response.add(new PriceHistoryResponse(ph.getId(), ph.getProductId(), ph.getProductTitle(), ph.getPreviousPrice(), ph.getNewPrice(), ph.getRecordedAt()));
+            response.add(new PriceHistoryResponse(ph.getId(), ph.getProductId(), ph.getProductTitle(), ph.getOldPrice(), ph.getNewPrice(), ph.getLastUpdateDateTime()));
         }
         return ResponseEntity.ok(response);
     }
@@ -149,7 +152,21 @@ public class AutoOrderController {
     @PostMapping("/price-history")
     public ResponseEntity<PriceHistoryResponse> recordPrice(@RequestBody PriceHistory priceHistory) {
         PriceHistory saved = priceHistoryRepo.save(priceHistory);
-        return ResponseEntity.status(201).body(new PriceHistoryResponse(saved.getId(), saved.getProductId(), saved.getProductTitle(), saved.getPreviousPrice(), saved.getNewPrice(), saved.getRecordedAt()));
+        return ResponseEntity.status(201).body(new PriceHistoryResponse(saved.getId(), saved.getProductId(), saved.getProductTitle(), saved.getOldPrice(), saved.getNewPrice(), saved.getLastUpdateDateTime()));
+    }
+
+    @GetMapping("/getPriceHistory/{productId}")
+    public ResponseEntity<PriceListResponse> getPriceList(@PathVariable("productId") Long productId) {
+        List<PriceHistory> history = priceHistoryRepo.findByProductId(productId, Sort.by(Sort.Direction.DESC, "lastUpdateDateTime"));
+        List<BigDecimal> prices = new ArrayList<>();
+        String productTitle = "";
+        for (PriceHistory ph : history) {
+            prices.add(ph.getNewPrice());
+            if (productTitle.isEmpty() && ph.getProductTitle() != null) {
+                productTitle = ph.getProductTitle();
+            }
+        }
+        return ResponseEntity.ok(new PriceListResponse(productId, productTitle, prices));
     }
 }
 

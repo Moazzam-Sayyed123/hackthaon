@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "user_wallets", schema = "buyer")
+@Table(name = "user_wallets")
 public class UserWallet {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,8 +18,8 @@ public class UserWallet {
     @Column
     private String userEmail;
 
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal balance = new BigDecimal("5000.00");
+    @Column(name = "wallet_balance", nullable = false, precision = 12, scale = 2)
+    private BigDecimal walletBalance = new BigDecimal("5000.00");
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
@@ -32,7 +32,7 @@ public class UserWallet {
     public UserWallet(String userId, String userEmail) {
         this.userId = userId;
         this.userEmail = userEmail;
-        this.balance = new BigDecimal("5000.00");
+        this.walletBalance = new BigDecimal("5000.00");
     }
 
     public Long getId() { return id; }
@@ -40,8 +40,8 @@ public class UserWallet {
     public void setUserId(String userId) { this.userId = userId; }
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
-    public BigDecimal getBalance() { return balance; }
-    public void setBalance(BigDecimal balance) { this.balance = balance; }
+    public BigDecimal getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(BigDecimal walletBalance) { this.walletBalance = walletBalance; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

@@ -76,7 +76,7 @@ public class ProductController {
     private void postPriceHistory(Long productId, String title, BigDecimal previousPrice, BigDecimal newPrice) throws IOException, InterruptedException {
         try {
             String prev = (previousPrice == null) ? "null" : previousPrice.toPlainString();
-            String json = String.format("{\"productId\":%d,\"productTitle\":\"%s\",\"previousPrice\":%s,\"newPrice\":%s}", productId, title.replace("\"","\\\""), prev, newPrice.toPlainString());
+            String json = String.format("{\"productId\":%d,\"productTitle\":\"%s\",\"oldPrice\":%s,\"newPrice\":%s}", productId, title.replace("\"","\\\""), prev, newPrice.toPlainString());
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:4002/api/price-history"))

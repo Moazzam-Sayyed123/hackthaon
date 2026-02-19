@@ -7,12 +7,12 @@ public class WalletResponse {
     public Long id;
     public String userId;
     public String userEmail;
-    public BigDecimal balance;
+    public BigDecimal walletBalance;
 
-    public WalletResponse(Long id, String userId, String userEmail, BigDecimal balance) {
+    public WalletResponse(Long id, String userId, String userEmail, BigDecimal walletBalance) {
         this.id = id;
         this.userId = userId;
         this.userEmail = userEmail;
-        this.balance = balance;
+        this.walletBalance = walletBalance;
     }
 }

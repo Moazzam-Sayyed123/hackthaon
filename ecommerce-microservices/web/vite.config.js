@@ -16,6 +16,18 @@ export default defineConfig({
 				target: "http://localhost:4002",
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/api\/buyer/, "/api")
+			},
+			"/api/getPriceHistory": {
+				target: "http://localhost:4002",
+				changeOrigin: true
+			},
+			"/api/wallet": {
+				target: "http://localhost:4002",
+				changeOrigin: true
+			},
+			"/api/price-history": {
+				target: "http://localhost:4002",
+				changeOrigin: true
 			}
 		}
 	}

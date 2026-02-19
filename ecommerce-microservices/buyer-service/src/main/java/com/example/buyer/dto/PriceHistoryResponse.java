@@ -8,42 +8,31 @@ public class PriceHistoryResponse {
     private Long id;
     private Long productId;
     private String productTitle;
-    private BigDecimal previousPrice;
+    private BigDecimal oldPrice;
     private BigDecimal newPrice;
-    private Instant recordedAt;
+    private Instant lastUpdateDateTime;
 
     // Required by Jackson
-    public PriceHistoryResponse() {}
+        public PriceHistoryResponse() {}
 
     // Full-args constructor
-    public PriceHistoryResponse(
-            Long id,
-            Long productId,
-            String productTitle,
-            BigDecimal previousPrice,
-            BigDecimal newPrice,
-            Instant recordedAt
-    ) {
-        this.id = id;
-        this.productId = productId;
-        this.productTitle = productTitle;
-        this.previousPrice = previousPrice;
-        this.newPrice = newPrice;
-        this.recordedAt = recordedAt;
-    }
+        public PriceHistoryResponse(
+                Long id,
+                Long productId,
+                String productTitle,
+                BigDecimal oldPrice,
+                BigDecimal newPrice,
+                Instant lastUpdateDateTime
+        ) {
+            this.id = id;
+            this.productId = productId;
+            this.productTitle = productTitle;
+            this.oldPrice = oldPrice;
+            this.newPrice = newPrice;
+            this.lastUpdateDateTime = lastUpdateDateTime;
+        }
 
-    // Optionally, a constructor without previous/new if you sometimes return only metadata
-    public PriceHistoryResponse(
-            Long id,
-            Long productId,
-            String productTitle,
-            Instant recordedAt
-    ) {
-        this.id = id;
-        this.productId = productId;
-        this.productTitle = productTitle;
-        this.recordedAt = recordedAt;
-    }
+    // (no-arg and full-arg constructors provided)
 
     // Getters and setters
     public Long getId() { return id; }
@@ -55,12 +44,12 @@ public class PriceHistoryResponse {
     public String getProductTitle() { return productTitle; }
     public void setProductTitle(String productTitle) { this.productTitle = productTitle; }
 
-    public BigDecimal getPreviousPrice() { return previousPrice; }
-    public void setPreviousPrice(BigDecimal previousPrice) { this.previousPrice = previousPrice; }
+        public BigDecimal getOldPrice() { return oldPrice; }
+        public void setOldPrice(BigDecimal oldPrice) { this.oldPrice = oldPrice; }
 
     public BigDecimal getNewPrice() { return newPrice; }
     public void setNewPrice(BigDecimal newPrice) { this.newPrice = newPrice; }
 
-    public Instant getRecordedAt() { return recordedAt; }
-    public void setRecordedAt(Instant recordedAt) { this.recordedAt = recordedAt; }
+        public Instant getLastUpdateDateTime() { return lastUpdateDateTime; }
+        public void setLastUpdateDateTime(Instant lastUpdateDateTime) { this.lastUpdateDateTime = lastUpdateDateTime; }
 }

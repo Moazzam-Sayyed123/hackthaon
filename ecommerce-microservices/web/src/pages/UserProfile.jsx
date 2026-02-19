@@ -9,6 +9,8 @@ export default function UserProfile() {
   const [editMode, setEditMode] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ amount: "", mode: "UPI" });
   const [form, setForm] = useState({
     address: user?.address || "",
     city: user?.city || "",
@@ -27,7 +29,7 @@ export default function UserProfile() {
       const res = await fetch(`/api/wallet/${encodeURIComponent(userId)}`);
       if (res.ok) {
         const data = await res.json();
-        setWalletBalance(data.balance);
+        setWalletBalance(data.walletBalance ?? data.balance);
       }
     } catch (err) {
       console.error("Failed to load wallet:", err);
@@ -78,23 +80,7 @@ export default function UserProfile() {
                       ) : (
                         <div className="d-flex align-items-center gap-3">
                           <h3 className="text-success mb-0">₹{Number(walletBalance).toFixed(2)}</h3>
-                          <button className="btn btn-sm btn-outline-success" onClick={async () => {
-                            const amt = prompt('Enter amount to add to wallet (₹)');
-                            if (!amt) return;
-                            const a = Number(amt);
-                            if (Number.isNaN(a) || a <= 0) { alert('Invalid amount'); return; }
-                            try {
-                              const userId = user.email || user.id || 'default-user';
-                              const res = await fetch(`/api/wallet/${encodeURIComponent(userId)}/add`, {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ amount: a })
-                              });
-                              if (!res.ok) throw new Error('Failed to add balance');
-                              const data = await res.json();
-                              setWalletBalance(data.balance);
-                              alert('Balance updated');
-                            } catch (err) { alert('Error: ' + err.message); }
-                          }}>Add Balance</button>
+                          <button className="btn btn-sm btn-outline-success" onClick={() => setShowAddModal(true)}>Add Balance</button>
                         </div>
                       )}
                     </div>
@@ -174,6 +160,51 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
+      {/* Add Balance Modal */}
+      {showAddModal && (
+        <div className="modal show d-block" tabIndex={-1} role="dialog">
+          <div className="modal-dialog modal-sm" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add Amount to Wallet</h5>
+                <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowAddModal(false)} />
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Amount (₹)</label>
+                  <input type="number" className="form-control form-control-sm" value={addForm.amount} onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })} />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Mode of Payment</label>
+                  <select className="form-select form-select-sm" value={addForm.mode} onChange={(e) => setAddForm({ ...addForm, mode: e.target.value })}>
+                    <option value="UPI">UPI</option>
+                    <option value="DebitCard">Debit Card</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
+                  const a = Number(addForm.amount);
+                  if (Number.isNaN(a) || a <= 0) { alert('Invalid amount'); return; }
+                  try {
+                    const userId = user.email || user.id || 'default-user';
+                    const res = await fetch(`/api/wallet/${encodeURIComponent(userId)}/add`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ amount: a, mode: addForm.mode })
+                    });
+                    if (!res.ok) throw new Error('Failed to add balance');
+                    const data = await res.json();
+                    setWalletBalance(data.walletBalance ?? data.balance);
+                    setShowAddModal(false);
+                    alert('Balance updated');
+                  } catch (err) { alert('Error: ' + err.message); }
+                }}>Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
