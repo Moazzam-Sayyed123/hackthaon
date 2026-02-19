@@ -70,7 +70,7 @@ public class ProductController {
         } catch (Exception e) {
             System.err.println("Failed to post price history: " + e.getMessage());
         }
-        return ResponseEntity.ok(Map.of("message", "Product updated successfully", "product", updated));
+        return ResponseEntity.ok(updated);
     }
 
     private void postPriceHistory(Long productId, String title, BigDecimal previousPrice, BigDecimal newPrice) throws IOException, InterruptedException {
