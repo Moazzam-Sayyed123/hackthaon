@@ -41,11 +41,10 @@ public class ProductController {
             return ResponseEntity.badRequest().build();
         }
         Product saved = repo.save(input);
-        // Record initial price in buyer service price history
+        // Record initial price in buyer service price history (previousPrice = null)
         try {
-            postPriceHistory(saved.getId(), saved.getTitle(), saved.getPrice());
+            postPriceHistory(saved.getId(), saved.getTitle(), null, saved.getPrice());
         } catch (Exception e) {
-            // log but don't fail the request
             System.err.println("Failed to post price history: " + e.getMessage());
         }
         return ResponseEntity.status(201).body(saved);
@@ -63,20 +62,21 @@ public class ProductController {
         if (input.getPrice() != null) product.setPrice(input.getPrice());
         if (input.getQuantity() != null) product.setQuantity(input.getQuantity());
         Product updated = repo.save(product);
-        // If price changed, record history
+        // If price changed, record history and return success message
         try {
             if (input.getPrice() != null && (oldPrice == null || input.getPrice().compareTo(oldPrice) != 0)) {
-                postPriceHistory(updated.getId(), updated.getTitle(), updated.getPrice());
+                postPriceHistory(updated.getId(), updated.getTitle(), oldPrice, updated.getPrice());
             }
         } catch (Exception e) {
             System.err.println("Failed to post price history: " + e.getMessage());
         }
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(Map.of("message", "Product updated successfully", "product", updated));
     }
 
-    private void postPriceHistory(Long productId, String title, BigDecimal price) throws IOException, InterruptedException {
+    private void postPriceHistory(Long productId, String title, BigDecimal previousPrice, BigDecimal newPrice) throws IOException, InterruptedException {
         try {
-            String json = String.format("{\"productId\":%d,\"productTitle\":\"%s\",\"price\":%s}", productId, title.replace("\"","\\\""), price.toPlainString());
+            String prev = (previousPrice == null) ? "null" : previousPrice.toPlainString();
+            String json = String.format("{\"productId\":%d,\"productTitle\":\"%s\",\"previousPrice\":%s,\"newPrice\":%s}", productId, title.replace("\"","\\\""), prev, newPrice.toPlainString());
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://localhost:4002/api/price-history"))

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS buyer.price_history (
     id BIGSERIAL PRIMARY KEY,
     product_id BIGINT NOT NULL,
     product_title VARCHAR(255),
-    price DECIMAL(12, 2) NOT NULL,
+    previous_price DECIMAL(12, 2),
+    new_price DECIMAL(12, 2) NOT NULL,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -141,7 +141,7 @@ public class AutoOrderController {
         List<PriceHistory> history = priceHistoryRepo.findByProductId(productId, Sort.by(Sort.Direction.DESC, "recordedAt"));
         List<PriceHistoryResponse> response = new ArrayList<>();
         for (PriceHistory ph : history) {
-            response.add(new PriceHistoryResponse(ph.getId(), ph.getProductId(), ph.getProductTitle(), ph.getPrice(), ph.getRecordedAt()));
+            response.add(new PriceHistoryResponse(ph.getId(), ph.getProductId(), ph.getProductTitle(), ph.getPreviousPrice(), ph.getNewPrice(), ph.getRecordedAt()));
         }
         return ResponseEntity.ok(response);
     }
@@ -149,7 +149,7 @@ public class AutoOrderController {
     @PostMapping("/price-history")
     public ResponseEntity<PriceHistoryResponse> recordPrice(@RequestBody PriceHistory priceHistory) {
         PriceHistory saved = priceHistoryRepo.save(priceHistory);
-        return ResponseEntity.status(201).body(new PriceHistoryResponse(saved.getId(), saved.getProductId(), saved.getProductTitle(), saved.getPrice(), saved.getRecordedAt()));
+        return ResponseEntity.status(201).body(new PriceHistoryResponse(saved.getId(), saved.getProductId(), saved.getProductTitle(), saved.getPreviousPrice(), saved.getNewPrice(), saved.getRecordedAt()));
     }
 }
 

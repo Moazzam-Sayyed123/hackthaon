@@ -76,7 +76,7 @@ export default function Login() {
             </div>
 
             <div className="mb-4">
-              <label className="form-label fw-bold">From login form</label>
+              <label className="form-label fw-bold">Login as</label>
               <div className="btn-group w-100" role="group">
                 <input
                   type="radio"
