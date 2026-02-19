@@ -18,59 +18,60 @@ export default function PriceHistory() {
   }
 
   if (!product) {
-    return (
-      <div className="container mt-5">
-        <div className="alert alert-danger">Product not found. Please select a product first.</div>
-        <button className="btn btn-primary" onClick={() => navigate("/home")}>
-          Back to Shop
-        </button>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    loadPriceHistory();
-  }, [product.id]);
-
-  const loadPriceHistory = async () => {
-    try {
-      const res = await fetch(`/api/price-history/product/${product.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        
-        if (data && data.length > 0) {
-          // Use actual database records
-          const sortedData = data.sort((a, b) => new Date(a.recordedAt) - new Date(b.recordedAt));
-          setPriceHistory(sortedData);
-          
-          // Calculate statistics
-          const prices = sortedData.map(h => Number(h.price));
-          const minPrice = Math.min(...prices);
-          const maxPrice = Math.max(...prices);
-          const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-          const currentPrice = Number(product.price);
-          
-          setStats({
-            minPrice,
-            maxPrice,
-            avgPrice,
-            currentPrice,
-            lowestPossible: Math.round(minPrice * 0.95 * 100) / 100,
-            recommendedMin: Math.round(avgPrice * 0.9 * 100) / 100,
-            recommendedMax: Math.round(avgPrice * 1.1 * 100) / 100,
-          });
-          return;
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load price history:", err);
-    }
-
-    // Fallback to mock data if no database records
-    generateMockPriceHistory();
-  };
-
-  const generateMockPriceHistory = () => {
+      {stats && (
+        <div className="row mb-4">
+          <div className="col-md-3 mb-3">
+            <div className="card bg-light shadow-sm">
+              <div className="card-body">
+                <h6 className="card-title text-muted">Current Price</h6>
+                <h3 className="text-primary">
+                  ₹{stats.currentPrice.toFixed(2)}
+                </h3>
+              </div>
+            </div>
+          </div>
+          {typeof stats.minPrice !== 'undefined' && (
+            <>
+              <div className="col-md-3 mb-3">
+                <div className="card bg-light shadow-sm">
+                  <div className="card-body">
+                    <h6 className="card-title text-muted">Lowest Price (30 days)</h6>
+                    <h3 className="text-success">
+                      ₹{stats.minPrice.toFixed(2)}
+                    </h3>
+                    <small className="text-muted">
+                      {((stats.currentPrice - stats.minPrice) / stats.currentPrice * 100).toFixed(1)}% above lowest
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-3 mb-3">
+                <div className="card bg-light shadow-sm">
+                  <div className="card-body">
+                    <h6 className="card-title text-muted">Highest Price (30 days)</h6>
+                    <h3 className="text-danger">
+                      ₹{stats.maxPrice.toFixed(2)}
+                    </h3>
+                    <small className="text-muted">
+                      {((stats.maxPrice - stats.currentPrice) / stats.currentPrice * 100).toFixed(1)}% above current
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-3 mb-3">
+                <div className="card bg-light shadow-sm">
+                  <div className="card-body">
+                    <h6 className="card-title text-muted">Average Price (30 days)</h6>
+                    <h3 className="text-warning">
+                      ₹{stats.avgPrice.toFixed(2)}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     const historyData = [];
     const today = new Date();
     const currentPrice = Number(product.price);
@@ -143,47 +144,47 @@ export default function PriceHistory() {
         <div className="row mb-4">
           <div className="col-md-3 mb-3">
             <div className="card bg-light shadow-sm">
-              <div className="card-body">
-                <h6 className="card-title text-muted">Current Price</h6>
-                <h3 className="text-primary">
-                  ₹{stats.currentPrice.toFixed(2)}
-                </h3>
+              <div className="table-responsive">
+                {priceHistory.length === 0 ? (
+                  <div className="alert alert-info">No price history available. Showing current product price only.</div>
+                ) : (
+                  <table className="table table-hover table-sm">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Price</th>
+                        <th>Change from Current</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priceHistory.map((entry, idx) => {
+                        const entryPrice = Number(entry.price);
+                        const currentPrice = stats?.currentPrice || entryPrice;
+                        const change = ((entryPrice - currentPrice) / currentPrice * 100).toFixed(2);
+                        const displayDate = entry.recordedAt ? new Date(entry.recordedAt).toLocaleDateString("en-IN") : entry.date;
+                        
+                        return (
+                          <tr key={idx} className={Number(change) < 0 ? "table-success" : "table-danger"}>
+                            <td className="fw-bold">{displayDate}</td>
+                            <td>₹{entryPrice.toFixed(2)}</td>
+                            <td>
+                              {Number(change) < 0 ? (
+                                <span className="text-success">
+                                  <i className="bi bi-arrow-down"></i> {change}%
+                                </span>
+                              ) : (
+                                <span className="text-danger">
+                                  <i className="bi bi-arrow-up"></i> +{change}%
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            </div>
-          </div>
-          <div className="col-md-3 mb-3">
-            <div className="card bg-light shadow-sm">
-              <div className="card-body">
-                <h6 className="card-title text-muted">Lowest Price (30 days)</h6>
-                <h3 className="text-success">
-                  ₹{stats.minPrice.toFixed(2)}
-                </h3>
-                <small className="text-muted">
-                  {((stats.currentPrice - stats.minPrice) / stats.currentPrice * 100).toFixed(1)}% above lowest
-                </small>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3 mb-3">
-            <div className="card bg-light shadow-sm">
-              <div className="card-body">
-                <h6 className="card-title text-muted">Highest Price (30 days)</h6>
-                <h3 className="text-danger">
-                  ₹{stats.maxPrice.toFixed(2)}
-                </h3>
-                <small className="text-muted">
-                  {((stats.maxPrice - stats.currentPrice) / stats.currentPrice * 100).toFixed(1)}% above current
-                </small>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3 mb-3">
-            <div className="card bg-light shadow-sm">
-              <div className="card-body">
-                <h6 className="card-title text-muted">Average Price (30 days)</h6>
-                <h3 className="text-warning">
-                  ₹{stats.avgPrice.toFixed(2)}
-                </h3>
               </div>
             </div>
           </div>

@@ -41,7 +41,7 @@ export default function Login() {
       alignItems: "center",
       justifyContent: "center"
     }}>
-      <div className="card" style={{ width: "100%", maxWidth: 450, boxShadow: "0 10px 40px rgba(0,0,0,0.2)" }}>
+      <div className="card" style={{ width: "100%", maxWidth: 380, boxShadow: "0 8px 28px rgba(0,0,0,0.15)" }}>
         <div className="card-body p-5">
           <div className="text-center mb-4">
             <h2 className="mb-2" style={{ color: "#667eea" }}>
@@ -76,7 +76,7 @@ export default function Login() {
             </div>
 
             <div className="mb-4">
-              <label className="form-label fw-bold">I am a...</label>
+              <label className="form-label fw-bold">From login form</label>
               <div className="btn-group w-100" role="group">
                 <input
                   type="radio"
