@@ -1,16 +1,16 @@
 package com.example.seller.controller;
 
+import com.example.seller.client.PriceHistoryClient;
 import com.example.seller.model.Product;
 import com.example.seller.repo.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,10 +19,14 @@ import java.util.Optional;
 @RequestMapping("/api")
 public class ProductController {
 
-    private final ProductRepository repo;
+    private static final Logger log = LoggerFactory.getLogger(ProductController.class);
 
-    public ProductController(ProductRepository repo) {
+    private final ProductRepository repo;
+    private final PriceHistoryClient priceHistoryClient;
+
+    public ProductController(ProductRepository repo, PriceHistoryClient priceHistoryClient) {
         this.repo = repo;
+        this.priceHistoryClient = priceHistoryClient;
     }
 
     @GetMapping("/health")
@@ -36,57 +40,61 @@ public class ProductController {
     }
 
     @PostMapping("/products")
-    public ResponseEntity<Product> create(@RequestBody Product input) {
+    public ResponseEntity<Map<String, Object>> create(@RequestBody Product input) {
         if (input.getTitle() == null || input.getPrice() == null) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", "title and price are required"));
         }
+
         Product saved = repo.save(input);
-        // Record initial price in buyer service price history (previousPrice = null)
+
+        // Record initial price (previousPrice=null)
         try {
-            postPriceHistory(saved.getId(), saved.getTitle(), null, saved.getPrice());
+            priceHistoryClient.postPriceHistory(
+                    saved.getId(), saved.getTitle(), null, saved.getPrice(), Instant.now()
+            );
         } catch (Exception e) {
-            System.err.println("Failed to post price history: " + e.getMessage());
+            log.error("Failed to post initial price history for productId={}", saved.getId(), e);
+            // decide: continue (eventual consistency) or return 202 with warning
         }
-        return ResponseEntity.status(201).body(saved);
+
+        URI location = URI.create("/api/products/" + saved.getId());
+        return ResponseEntity.created(location)
+                .body(Map.of("message", "Product created", "product", saved));
     }
 
     @PutMapping("/products/{id}")
-    public ResponseEntity<Product> update(@PathVariable("id") Long id, @RequestBody Product input) {
+    public ResponseEntity<Map<String, Object>> update(@PathVariable("id") Long id, @RequestBody Product input) {
         Optional<Product> productOpt = repo.findById(id);
         if (productOpt.isEmpty()) {
-            return ResponseEntity.status(404).build();
+            return ResponseEntity.status(404).body(Map.of("error", "Product not found"));
         }
+
         Product product = productOpt.get();
         BigDecimal oldPrice = product.getPrice();
+
         if (input.getTitle() != null) product.setTitle(input.getTitle());
         if (input.getPrice() != null) product.setPrice(input.getPrice());
         if (input.getQuantity() != null) product.setQuantity(input.getQuantity());
-        Product updated = repo.save(product);
-        // If price changed, record history and return success message
-        try {
-            if (input.getPrice() != null && (oldPrice == null || input.getPrice().compareTo(oldPrice) != 0)) {
-                postPriceHistory(updated.getId(), updated.getTitle(), oldPrice, updated.getPrice());
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to post price history: " + e.getMessage());
-        }
-        return ResponseEntity.ok(updated);
-    }
 
-    private void postPriceHistory(Long productId, String title, BigDecimal previousPrice, BigDecimal newPrice) throws IOException, InterruptedException {
-        try {
-            String prev = (previousPrice == null) ? "null" : previousPrice.toPlainString();
-            String json = String.format("{\"productId\":%d,\"productTitle\":\"%s\",\"oldPrice\":%s,\"newPrice\":%s}", productId, title.replace("\"","\\\""), prev, newPrice.toPlainString());
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:4002/api/price-history"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-            client.send(request, HttpResponse.BodyHandlers.discarding());
-        } catch (Exception ex) {
-            throw ex;
+        Product updated = repo.save(product);
+
+        // If price changed, record history
+        if (input.getPrice() != null && (oldPrice == null || input.getPrice().compareTo(oldPrice) != 0)) {
+            try {
+                priceHistoryClient.postPriceHistory(
+                        updated.getId(), updated.getTitle(), oldPrice, updated.getPrice(), Instant.now()
+                );
+            } catch (Exception e) {
+                log.error("Failed to post price history for productId={}", updated.getId(), e);
+                // Optionally include a warning in the response
+                return ResponseEntity.ok(Map.of(
+                        "message", "Product updated successfully (history pending)",
+                        "product", updated
+                ));
+            }
         }
+
+        return ResponseEntity.ok(Map.of("message", "Product updated successfully", "product", updated));
     }
 
     @DeleteMapping("/products/{id}")
